@@ -8,10 +8,13 @@ import com.example.application.PaperSummaryAgent;
 import com.example.application.PodcastScriptAgent;
 import com.example.domain.PaperSummary;
 import com.example.domain.PodcastScript;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,10 +31,40 @@ public class ResearchPodcastEndpointIntegrationTest extends TestKitSupport {
                 .withModelProvider(PodcastScriptAgent.class, scriptModel);
     }
 
+    private String validToken() throws JsonProcessingException {
+        return bearerTokenWith(Map.of(
+                "sub", "auth0|test-user-1",
+                "email_verified", "true",
+                "name", "Test User",
+                "email", "test@example.com"
+        ));
+    }
+
+    private String bearerTokenWith(Map<String, Object> claims) throws JsonProcessingException {
+        String header = Base64.getEncoder()
+                .encodeToString("{\"alg\":\"none\"}".getBytes());
+        byte[] jsonClaims = JsonSupport.getObjectMapper().writeValueAsBytes(claims);
+        String payload = Base64.getEncoder().encodeToString(jsonClaims);
+        return header + "." + payload;
+    }
+
     @Test
-    public void testCreatePodcastReturnsBadRequestForBlankQuery() {
+    public void testRequestWithNoTokenIsRejected() {
         var response = httpClient
                 .POST("/podcast")
+                .withRequestBody(new ResearchPodcastEndpoint.CreatePodcastRequest("test query"))
+                .invoke();
+
+        // Akka returns 400 when the Authorization: Bearer header is missing entirely
+        assertThat(response.status().isFailure()).isTrue();
+        assertThat(response.status().intValue()).isIn(400, 401);
+    }
+
+    @Test
+    public void testCreatePodcastReturnsBadRequestForBlankQuery() throws JsonProcessingException {
+        var response = httpClient
+                .POST("/podcast")
+                .addHeader("Authorization", "Bearer " + validToken())
                 .withRequestBody(new ResearchPodcastEndpoint.CreatePodcastRequest(""))
                 .invoke();
 
@@ -40,34 +73,37 @@ public class ResearchPodcastEndpointIntegrationTest extends TestKitSupport {
     }
 
     @Test
-    public void testGetStatusReturns404ForUnknownWorkflowId() {
+    public void testGetStatusReturns404ForUnknownWorkflowId() throws JsonProcessingException {
         var response = httpClient
                 .GET("/podcast/unknown-workflow-id-xyz/status")
+                .addHeader("Authorization", "Bearer " + validToken())
                 .invoke();
 
         assertThat(response.status().intValue()).isEqualTo(404);
     }
 
     @Test
-    public void testGetScriptReturns404ForUnknownWorkflowId() {
+    public void testGetScriptReturns404ForUnknownWorkflowId() throws JsonProcessingException {
         var response = httpClient
                 .GET("/podcast/unknown-workflow-id-xyz/script")
+                .addHeader("Authorization", "Bearer " + validToken())
                 .invoke();
 
         assertThat(response.status().intValue()).isEqualTo(404);
     }
 
     @Test
-    public void testGetAudioReturns404ForUnknownWorkflowId() {
+    public void testGetAudioReturns404ForUnknownWorkflowId() throws JsonProcessingException {
         var response = httpClient
                 .GET("/podcast/unknown-workflow-id-xyz/audio")
+                .addHeader("Authorization", "Bearer " + validToken())
                 .invoke();
 
         assertThat(response.status().intValue()).isEqualTo(404);
     }
 
     @Test
-    public void testCreatePodcastAndPollStatus() {
+    public void testCreatePodcastAndPollStatus() throws JsonProcessingException {
         var summaryResponse = new PaperSummaryAgent.SummariseResponse(List.of(
                 new PaperSummary("arxiv:1", "Machine Learning Paper", "A plain-language summary.")
         ));
@@ -84,6 +120,7 @@ public class ResearchPodcastEndpointIntegrationTest extends TestKitSupport {
         // Create podcast workflow
         var createResponse = httpClient
                 .POST("/podcast")
+                .addHeader("Authorization", "Bearer " + validToken())
                 .withRequestBody(new ResearchPodcastEndpoint.CreatePodcastRequest("machine learning"))
                 .responseBodyAs(ResearchPodcastEndpoint.CreatePodcastResponse.class)
                 .invoke();
@@ -99,6 +136,7 @@ public class ResearchPodcastEndpointIntegrationTest extends TestKitSupport {
                 .untilAsserted(() -> {
                     var statusResponse = httpClient
                             .GET("/podcast/" + workflowId + "/status")
+                            .addHeader("Authorization", "Bearer " + validToken())
                             .responseBodyAs(ResearchPodcastEndpoint.StatusResponse.class)
                             .invoke();
 
@@ -109,7 +147,7 @@ public class ResearchPodcastEndpointIntegrationTest extends TestKitSupport {
     }
 
     @Test
-    public void testGetScriptReturns409WhenNotComplete() {
+    public void testGetScriptReturns409WhenNotComplete() throws JsonProcessingException {
         var summaryResponse = new PaperSummaryAgent.SummariseResponse(List.of(
                 new PaperSummary("arxiv:1", "Test Paper", "Summary.")
         ));
@@ -126,6 +164,7 @@ public class ResearchPodcastEndpointIntegrationTest extends TestKitSupport {
         // Create podcast
         var createResponse = httpClient
                 .POST("/podcast")
+                .addHeader("Authorization", "Bearer " + validToken())
                 .withRequestBody(new ResearchPodcastEndpoint.CreatePodcastRequest("quantum computing"))
                 .responseBodyAs(ResearchPodcastEndpoint.CreatePodcastResponse.class)
                 .invoke();
@@ -134,14 +173,13 @@ public class ResearchPodcastEndpointIntegrationTest extends TestKitSupport {
         var workflowId = createResponse.body().workflowId();
 
         // Immediately request script — likely not complete yet
-        // The workflow just started so it should be SEARCHING or early stage
-        // Poll until we see either 200 (script ready) or 409 (not ready yet)
         Awaitility.await()
                 .atMost(5, TimeUnit.SECONDS)
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .untilAsserted(() -> {
                     var scriptResponse2 = httpClient
                             .GET("/podcast/" + workflowId + "/script")
+                            .addHeader("Authorization", "Bearer " + validToken())
                             .invoke();
 
                     // Either script is ready (200) or not yet (409) — both are valid

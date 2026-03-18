@@ -5,10 +5,12 @@ import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.model.MediaTypes;
 import akka.http.javadsl.model.StatusCodes;
 import akka.javasdk.annotations.Acl;
+import akka.javasdk.annotations.JWT;
 import akka.javasdk.annotations.http.Get;
 import akka.javasdk.annotations.http.HttpEndpoint;
 import akka.javasdk.annotations.http.Post;
 import akka.javasdk.client.ComponentClient;
+import akka.javasdk.http.AbstractHttpEndpoint;
 import akka.javasdk.http.HttpException;
 import akka.javasdk.http.HttpResponses;
 import com.example.application.PodcastCreationWorkflow;
@@ -25,7 +27,8 @@ import java.util.UUID;
 
 @HttpEndpoint("/podcast")
 @Acl(allow = @Acl.Matcher(principal = Acl.Principal.INTERNET))
-public class ResearchPodcastEndpoint {
+@JWT(validate = JWT.JwtMethodMode.BEARER_TOKEN)
+public class ResearchPodcastEndpoint extends AbstractHttpEndpoint {
 
     // --- Request / Response records ---
 
