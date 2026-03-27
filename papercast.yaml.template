@@ -1,0 +1,35 @@
+name: papercast
+
+service:
+  image: {IMAGE_URL}
+
+  env:
+    # AI model
+    - name: OPENAI_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: papercast-secrets
+          key: openai-api-key
+
+    # Audio generation (optional — omit ELEVENLABS_API_KEY to disable /audio endpoint)
+    - name: ELEVENLABS_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: papercast-secrets
+          key: elevenlabs-api-key
+
+    # Paper search rate limits (optional — higher limits with API keys)
+    - name: NCBI_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: papercast-secrets
+          key: ncbi-api-key
+
+    - name: S2_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: papercast-secrets
+          key: s2-api-key
+
+    - name: JAVA_OPTS
+      value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"

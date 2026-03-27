@@ -25,10 +25,13 @@ effective-pom.xml
 #local db
 db.mv.db
 
-# Environment / secrets
+# Environment / secrets — keep example files, ignore real ones
 .env
 .env.*
+!.env.example
+!frontend/.env.example
 
 akka-context/
 .claude/settings.local.json
 
+.env
