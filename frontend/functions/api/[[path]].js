@@ -11,10 +11,7 @@
 export async function onRequest(context) {
   const { request, env } = context
 
-  const serviceUrl = env.AKKA_SERVICE_URL
-  if (!serviceUrl) {
-    return new Response('AKKA_SERVICE_URL is not configured', { status: 502 })
-  }
+  const serviceUrl = env.AKKA_SERVICE_URL || 'https://rough-wood-1748.europe-west1.akka.services'
 
   const url = new URL(request.url)
   const targetPath = url.pathname.replace(/^\/api/, '') + url.search
