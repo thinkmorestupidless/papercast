@@ -30,6 +30,7 @@ db.mv.db
 .env.*
 !.env.example
 !frontend/.env.example
+!frontend/.env.production
 
 akka-context/
 .claude/settings.local.json
