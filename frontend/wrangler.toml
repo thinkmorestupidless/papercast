@@ -1,0 +1,15 @@
+name = "papercast"
+pages_build_output_dir = "dist"
+
+# Environment variables that must be set in the Cloudflare Pages dashboard
+# (Settings → Environment Variables), NOT here, since they contain deployment-specific URLs:
+#
+#   AKKA_SERVICE_URL   — your deployed Akka service URL
+#                        e.g. https://young-fire-2481.us-east1.akka.app
+#   VITE_AUTH0_DOMAIN  — your Auth0 tenant, e.g. your-tenant.auth0.com
+#   VITE_AUTH0_CLIENT_ID — your Auth0 SPA application client ID
+#
+# VITE_* variables are build-time: Cloudflare bakes them into the JS bundle
+# at build time, so they MUST be set as "Build variables" (not runtime variables).
+#
+# AKKA_SERVICE_URL is a runtime variable read by the Pages Function at request time.

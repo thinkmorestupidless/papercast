@@ -1,4 +1,4 @@
-# Research Podcast Creator
+# Papercast
 
 An Akka service that searches online scientific paper archives, summarises the papers using AI, generates a podcast script, and creates an audio recording via ElevenLabs text-to-speech.
 
@@ -131,15 +131,48 @@ Install the `akka` CLI as documented in [Install Akka CLI](https://doc.akka.io/r
 Deploy the service:
 
 ```shell
-akka service deploy research-podcast-creator research-podcast-creator:tag-name --push
+akka service deploy papercast papercast:tag-name --push
 ```
 
 Set secrets before deploying:
 
 ```shell
-akka secret create generic podcast-secrets \
+akka secret create generic papercast-secrets \
   --literal OPENAI_API_KEY=<key> \
   --literal ELEVENLABS_API_KEY=<key>
 ```
 
 Refer to [Deploy and manage services](https://doc.akka.io/operations/services/deploy-service.html) for more information.
+
+## Frontend (Papercast Web UI)
+
+The `frontend/` directory contains a React + Vite SPA. See `frontend/.env.example` for configuration.
+
+### Run locally
+
+```shell
+cd frontend
+cp .env.example .env.local   # fill in VITE_AUTH0_DOMAIN and VITE_AUTH0_CLIENT_ID
+npm install
+npm run dev                  # http://localhost:5173
+```
+
+The dev server proxies `/api/*` to the Akka backend at `http://localhost:9000`.
+
+### Deploy to Cloudflare Pages
+
+```shell
+cd frontend
+npm run build
+npx wrangler pages deploy dist
+```
+
+Set the following in the Cloudflare Pages dashboard (Settings → Environment Variables):
+
+| Variable | Type | Value |
+|---|---|---|
+| `VITE_AUTH0_DOMAIN` | Build | your Auth0 tenant domain |
+| `VITE_AUTH0_CLIENT_ID` | Build | your Auth0 SPA client ID |
+| `AKKA_SERVICE_URL` | Runtime | your deployed Akka service URL |
+
+The Cloudflare Pages Function at `functions/api/[[path]].js` proxies all `/api/*` requests to the Akka backend, so no CORS configuration is needed.
